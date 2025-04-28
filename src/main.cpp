@@ -27,6 +27,15 @@ static xSemaphoreHandle recv_sem = NULL;
 /* Timer  */
 static volatile uint32_t g_msec_cnt = 0;
 
+static wiz_NetInfo g_net_info = {
+    .mac = {0x00, 0x08, 0xDC, 0x12, 0x34, 0x56},  // MAC address
+    .ip = {192, 168, 100, 3},                     // IP address
+    .sn = {255, 255, 255, 0},                     // Subnet Mask
+    .gw = {192, 168, 100, 1},                     // Gateway
+    .dns = {8, 8, 8, 8},                          // DNS server
+    .dhcp = NETINFO_STATIC                        // DHCP enable/disable
+};
+
 static void set_clock_khz(void);
 static void gpio_callback(void);
 static void repeating_timer_callback(void);
@@ -38,9 +47,34 @@ int64_t alarm_callback(alarm_id_t id, void *user_data) {
 }
 
 void task0(void *pvParameters) {
+  wizchip_spi_initialize();
+  wizchip_cris_initialize();
+
+  printf("hoge\n");
+  wizchip_reset();
+  wizchip_initialize();
+  wizchip_check();
+
+  printf("hoge\n");
+  wizchip_1ms_timer_initialize(repeating_timer_callback);
+  wizchip_gpio_interrupt_initialize(Sn_MR_UDP, gpio_callback);
+
+  network_initialize(g_net_info);
+  print_network_information(g_net_info);
+  int retval = socket(0, Sn_MR_UDP, 5000, 0);
+  if (retval != 0) {
+    printf("socket() failed: %d\n", retval);
+    return;
+  }
+
+  char msg[] = "Hello, world!";
+  uint8_t ip[4] = {192, 168, 100, 2};  // Destination IP address
+
   while (1) {
     printf("Task 0\n");
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    sendto(0, (uint8_t *)msg, strlen(msg), ip, 50001);
+    // sleep_ms(1000);
+    vTaskDelay(1);
   }
 }
 
@@ -59,18 +93,8 @@ int main() {
     sleep_ms(1);
   }
 
-  wizchip_spi_initialize();
-  wizchip_cris_initialize();
-
-  wizchip_reset();
-  wizchip_initialize();
-  wizchip_check();
-
-  wizchip_1ms_timer_initialize(repeating_timer_callback);
-  wizchip_gpio_interrupt_initialize(Sn_MR_UDP, gpio_callback);
-
   xTaskCreate(task0, "Task_0", 256, NULL, 1, NULL);
-  xTaskCreate(task1, "Task_1", 256, NULL, 1, NULL);
+  // xTaskCreate(task1, "Task_1", 256, NULL, 1, NULL);
   vTaskStartScheduler();
 
   // Timer example code - This example fires off the callback after 2000ms
