@@ -17,6 +17,7 @@ target_link_libraries(w5100_test
 target_include_directories(w5100_test PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
         ${PORT_DIR}/freertos
+        ${INC_DIR}
 )
 
 # Add any user requested libraries

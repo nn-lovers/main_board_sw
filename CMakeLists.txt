@@ -59,6 +59,10 @@ if(NOT DEFINED WIZNET_DIR)
     message(STATUS "WIZNET_DIR = ${WIZNET_DIR}")
 endif()
 
+if(NOT DEFINED INC_DIR)
+    set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/inc)
+    message(STATUS "INC_DIR = ${INC_DIR}")
+endif()
 
 add_subdirectory(${PORT_DIR})
 add_subdirectory(lib)

@@ -97,6 +97,9 @@
 #define configTIMER_QUEUE_LENGTH 10
 #define configTIMER_TASK_STACK_DEPTH 1024
 
+/* Notification definitions */
+// #define configUSE_TASK_NOTIFICATIONS 1
+
 /* Interrupt nesting behaviour configuration. */
 /*
 #define configKERNEL_INTERRUPT_PRIORITY         [dependent of processor]

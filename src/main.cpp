@@ -12,6 +12,7 @@
 #include "hardware/timer.h"
 #include "pico/binary_info.h"
 #include "pico/critical_section.h"
+#include "pico/multicore.h"
 #include "pico/stdlib.h"
 #include "socket.h"
 #include "timer.h"
@@ -21,11 +22,12 @@
 
 #define PLL_SYS_KHZ (133 * 1000)
 
-/* Semaphore */
-static xSemaphoreHandle recv_sem = NULL;
+// Task handle
+TaskHandle_t task0_handle = NULL;
+TaskHandle_t task1_handle = NULL;
 
-/* Timer  */
-static volatile uint32_t g_msec_cnt = 0;
+QueueHandle_t recv_queue = NULL;
+uint8_t recvbuf[2048];
 
 static wiz_NetInfo g_net_info = {
     .mac = {0x00, 0x08, 0xDC, 0x12, 0x34, 0x56},  // MAC address
@@ -38,8 +40,6 @@ static wiz_NetInfo g_net_info = {
 
 static void set_clock_khz(void);
 static void gpio_callback(void);
-static void repeating_timer_callback(void);
-static time_t millis(void);
 
 int64_t alarm_callback(alarm_id_t id, void *user_data) {
   // Put your timeout handler code in here
@@ -56,8 +56,7 @@ void task0(void *pvParameters) {
   wizchip_check();
 
   printf("hoge\n");
-  wizchip_1ms_timer_initialize(repeating_timer_callback);
-  wizchip_gpio_interrupt_initialize(Sn_MR_UDP, gpio_callback);
+  wizchip_gpio_interrupt_initialize(0, gpio_callback);
 
   network_initialize(g_net_info);
   print_network_information(g_net_info);
@@ -74,16 +73,49 @@ void task0(void *pvParameters) {
     printf("Task 0\n");
     sendto(0, (uint8_t *)msg, strlen(msg), ip, 50001);
     // sleep_ms(1000);
-    vTaskDelay(1);
+    vTaskDelay(1000);
   }
 }
 
 void task1(void *pvParameters) {
+  uint16_t reg_val;
+  int32_t recv_len = 0;
+  uint8_t queuebuf = 0;
+
+  sleep_ms(2000);
+
   while (1) {
-    printf("Task 1\n");
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    // // xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
+    // // xQueueReceive(recv_queue, &queuebuf, portMAX_DELAY);
+    // ctlwizchip(CW_GET_INTERRUPT, &reg_val);
+    // if (!(reg_val & 0b1)) continue;
+    // reg_val = (SIK_CONNECTED | SIK_DISCONNECTED | SIK_TIMEOUT | SIK_RECEIVED)
+    // &
+    //           0x00ff;
+    // ctlwizchip(CW_CLR_INTERRUPT, &reg_val);
+    // if (!(reg_val & SIK_RECEIVED)) continue;
+    //
+
+    uint8_t addr[4] = {0};
+    uint16_t port = 0;
+    recv_len = recvfrom(0, recvbuf, sizeof(recvbuf), addr, &port);
+    if (recv_len > 0) {
+      printf("recv: %d\n", recv_len);
+      recvbuf[recv_len] = '\0';
+      printf("recv from %d.%d.%d.%d:%d -> %s\n", addr[0], addr[1], addr[2],
+             addr[3], port, recvbuf);
+      // for (int i = 0; i < recv_len; i++) {
+      //   printf("%02x ", recvbuf[i]);
+      // }
+      printf("\n");
+    } else {
+      // printf("recv() failed: %d\n", recv_len);
+    }
+    vTaskDelay(100);
   }
 }
+
+void start_core1() { vTaskStartScheduler(); }
 
 int counter = 0;
 int main() {
@@ -93,8 +125,15 @@ int main() {
     sleep_ms(1);
   }
 
-  xTaskCreate(task0, "Task_0", 256, NULL, 1, NULL);
-  // xTaskCreate(task1, "Task_1", 256, NULL, 1, NULL);
+  // recv_queue = xQueueCreate(1, sizeof(uint8_t));
+  // if (recv_queue == NULL) {
+  //   printf("Failed to create queue\n");
+  //   return -1;
+  // }
+  // prvRuntimeInitializer();
+  xTaskCreate(task0, "Task_0", 256, NULL, 1, &task0_handle);
+  xTaskCreate(task1, "Task_1", 256, NULL, 1, &task1_handle);
+  // multicore_launch_core1(start_core1);
   vTaskStartScheduler();
 
   // Timer example code - This example fires off the callback after 2000ms
@@ -126,11 +165,10 @@ static void set_clock_khz(void) {
 static void gpio_callback(void) {
   signed portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 
-  xSemaphoreGiveFromISR(recv_sem, &xHigherPriorityTaskWoken);
-  portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
+  // xSemaphoreGiveFromISR(recv_sem, &xHigherPriorityTaskWoken);
+  // xTaskNotifyFromISR(task1_handle, 0x0, eNoAction,
+  // &xHigherPriorityTaskWoken);
+  uint8_t buf = 0;
+  // xQueueSendToBackFromISR(recv_queue, &buf, &xHigherPriorityTaskWoken);
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
-
-/* Timer */
-static void repeating_timer_callback(void) { g_msec_cnt++; }
-
-static time_t millis(void) { return g_msec_cnt; }
