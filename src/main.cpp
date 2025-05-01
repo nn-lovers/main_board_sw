@@ -56,7 +56,7 @@ void task0(void *pvParameters) {
   wizchip_check();
 
   printf("hoge\n");
-  wizchip_gpio_interrupt_initialize(0, gpio_callback);
+  // wizchip_gpio_interrupt_initialize(0, gpio_callback);
 
   network_initialize(g_net_info);
   print_network_information(g_net_info);
@@ -82,19 +82,20 @@ void task1(void *pvParameters) {
   int32_t recv_len = 0;
   uint8_t queuebuf = 0;
 
-  sleep_ms(2000);
+  sleep_ms(5000);
+
+  wizchip_gpio_interrupt_initialize(0, gpio_callback);
 
   while (1) {
-    // // xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
+    // xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     // // xQueueReceive(recv_queue, &queuebuf, portMAX_DELAY);
-    // ctlwizchip(CW_GET_INTERRUPT, &reg_val);
-    // if (!(reg_val & 0b1)) continue;
-    // reg_val = (SIK_CONNECTED | SIK_DISCONNECTED | SIK_TIMEOUT | SIK_RECEIVED)
-    // &
-    //           0x00ff;
-    // ctlwizchip(CW_CLR_INTERRUPT, &reg_val);
-    // if (!(reg_val & SIK_RECEIVED)) continue;
-    //
+    ctlwizchip(CW_GET_INTERRUPT, &reg_val);
+    if (!(reg_val & 0b1)) continue;
+    reg_val = (SIK_CONNECTED | SIK_DISCONNECTED | SIK_TIMEOUT | SIK_RECEIVED) &
+              0x00ff;
+    ctlsocket(0, CS_CLR_INTERRUPT, &reg_val);
+    if (!(reg_val & SIK_RECEIVED)) continue;
 
     uint8_t addr[4] = {0};
     uint16_t port = 0;
@@ -107,9 +108,10 @@ void task1(void *pvParameters) {
       // for (int i = 0; i < recv_len; i++) {
       //   printf("%02x ", recvbuf[i]);
       // }
+      gpio_put(PICO_DEFAULT_LED_PIN, !gpio_get(PICO_DEFAULT_LED_PIN));
       printf("\n");
     } else {
-      // printf("recv() failed: %d\n", recv_len);
+      printf("recv() failed: %d\n", recv_len);
     }
     vTaskDelay(100);
   }
@@ -124,6 +126,10 @@ int main() {
   while (!stdio_usb_connected()) {
     sleep_ms(1);
   }
+
+  gpio_init(PICO_DEFAULT_LED_PIN);
+  gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+  gpio_put(PICO_DEFAULT_LED_PIN, 1);
 
   // recv_queue = xQueueCreate(1, sizeof(uint8_t));
   // if (recv_queue == NULL) {
@@ -165,9 +171,11 @@ static void set_clock_khz(void) {
 static void gpio_callback(void) {
   signed portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 
+  gpio_put(PICO_DEFAULT_LED_PIN, !gpio_get(PICO_DEFAULT_LED_PIN));
   // xSemaphoreGiveFromISR(recv_sem, &xHigherPriorityTaskWoken);
-  // xTaskNotifyFromISR(task1_handle, 0x0, eNoAction,
+  // xTaskNotifyFromISR(task1_handle, 0x5, eNoAction,
   // &xHigherPriorityTaskWoken);
+  vTaskNotifyGiveFromISR(task1_handle, &xHigherPriorityTaskWoken);
   uint8_t buf = 0;
   // xQueueSendToBackFromISR(recv_queue, &buf, &xHigherPriorityTaskWoken);
   portYIELD_FROM_ISR(xHigherPriorityTaskWoken);

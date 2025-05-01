@@ -98,7 +98,7 @@
 #define configTIMER_TASK_STACK_DEPTH 1024
 
 /* Notification definitions */
-// #define configUSE_TASK_NOTIFICATIONS 1
+#define configUSE_TASK_NOTIFICATIONS 1
 
 /* Interrupt nesting behaviour configuration. */
 /*
