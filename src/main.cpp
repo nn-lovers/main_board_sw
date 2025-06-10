@@ -24,7 +24,7 @@
 
 // Task handle
 TaskHandle_t task0_handle = NULL;
-TaskHandle_t task1_handle = NULL;
+TaskHandle_t recv_task_handle = NULL;
 
 QueueHandle_t recv_queue = NULL;
 uint8_t recvbuf[2048];
@@ -39,7 +39,7 @@ static wiz_NetInfo g_net_info = {
 };
 
 static void set_clock_khz(void);
-static void gpio_callback(void);
+static void recv_intr_callback(void);
 
 int64_t alarm_callback(alarm_id_t id, void *user_data) {
   // Put your timeout handler code in here
@@ -77,19 +77,17 @@ void task0(void *pvParameters) {
   }
 }
 
-void task1(void *pvParameters) {
+void recv_task(void *pvParameters) {
   uint16_t reg_val;
   int32_t recv_len = 0;
   uint8_t queuebuf = 0;
 
   sleep_ms(5000);
 
-  wizchip_gpio_interrupt_initialize(0, gpio_callback);
+  wizchip_gpio_interrupt_initialize(0, recv_intr_callback);
 
   while (1) {
-    // xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    // // xQueueReceive(recv_queue, &queuebuf, portMAX_DELAY);
     ctlwizchip(CW_GET_INTERRUPT, &reg_val);
     if (!(reg_val & 0b1)) continue;
     reg_val = (SIK_CONNECTED | SIK_DISCONNECTED | SIK_TIMEOUT | SIK_RECEIVED) &
@@ -138,7 +136,7 @@ int main() {
   // }
   // prvRuntimeInitializer();
   xTaskCreate(task0, "Task_0", 256, NULL, 1, &task0_handle);
-  xTaskCreate(task1, "Task_1", 256, NULL, 1, &task1_handle);
+  xTaskCreate(recv_task, "RecvTask", 256, NULL, 1, &recv_task_handle);
   // multicore_launch_core1(start_core1);
   vTaskStartScheduler();
 
@@ -168,15 +166,10 @@ static void set_clock_khz(void) {
 }
 
 /* GPIO */
-static void gpio_callback(void) {
+static void recv_intr_callback(void) {
   signed portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-
-  gpio_put(PICO_DEFAULT_LED_PIN, !gpio_get(PICO_DEFAULT_LED_PIN));
-  // xSemaphoreGiveFromISR(recv_sem, &xHigherPriorityTaskWoken);
-  // xTaskNotifyFromISR(task1_handle, 0x5, eNoAction,
-  // &xHigherPriorityTaskWoken);
-  vTaskNotifyGiveFromISR(task1_handle, &xHigherPriorityTaskWoken);
+  // gpio_put(PICO_DEFAULT_LED_PIN, !gpio_get(PICO_DEFAULT_LED_PIN));
+  vTaskNotifyGiveFromISR(recv_task_handle, &xHigherPriorityTaskWoken);
   uint8_t buf = 0;
-  // xQueueSendToBackFromISR(recv_queue, &buf, &xHigherPriorityTaskWoken);
   portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
