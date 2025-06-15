@@ -1,6 +1,10 @@
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(w5100_test main.cpp )
+add_executable(w5100_test 
+        main.cpp 
+        eth.cpp
+        notify.cpp
+)
 
 pico_set_program_name(w5100_test "w5100_test")
 pico_set_program_version(w5100_test "0.1")
