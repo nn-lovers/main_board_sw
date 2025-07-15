@@ -9,6 +9,10 @@
 #include "packet.h"
 #include "timer.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static uint8_t recvbuf[2048];
 
 TaskHandle_t eth_send_task_handle;
@@ -44,7 +48,7 @@ void eth_send(char *data, size_t len, uint8_t *ip, uint16_t port) {
     return;
   }
 
-  if (xSemaphoreTake(eth_mutex, portMAX_DELAY) != pdTRUE) {
+  if (xSemaphoreTake(eth_mutex, pdMS_TO_TICKS(10)) != pdTRUE) {
     printf("Failed to take eth_mutex\n");
     return;
   }
@@ -128,3 +132,7 @@ static void recv_intr_callback(void) {
   uint8_t buf = 0;
   portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
+
+#ifdef __cplusplus
+}
+#endif

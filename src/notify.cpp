@@ -5,6 +5,7 @@
 #include <task.h>
 #include <time.h>
 
+#include "config.h"
 #include "eth.h"
 #include "hardware/spi.h"
 #include "packet.h"
@@ -40,13 +41,17 @@ void notify_task(void *pvParameters) {
         .abs_enc = absenc_val,
         .limit_sw = limit_sw_val,
     };
-    if (xQueueSend(recv_queue, &uplink_packet, 0) != pdTRUE) {
-      printf("Failed to send packet to queue\n");
-    } else {
-      // printf("Sent packet: abs_enc=%d, limit_sw=0x%02X\n", absenc_val,
-      // limit_sw_val);
-    }
 
-    vTaskDelay(pdMS_TO_TICKS(10));
+    eth_send((char *)&uplink_packet, sizeof(uplink_packet), (uint8_t *)dest_ip,
+             dest_port);
+
+    // if (xQueueSend(recv_queue, &uplink_packet, 0) != pdTRUE) {
+    //   printf("Failed to send packet to queue\n");
+    // } else {
+    //   // printf("Sent packet: abs_enc=%d, limit_sw=0x%02X\n", absenc_val,
+    //   // limit_sw_val);
+    // }
+
+    vTaskDelay(pdMS_TO_TICKS(20));
   }
 }

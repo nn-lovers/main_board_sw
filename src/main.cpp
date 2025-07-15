@@ -11,6 +11,8 @@
 #include "hardware/dma.h"
 #include "hardware/spi.h"
 #include "hardware/timer.h"
+#include "notify.h"
+#include "output.h"
 #include "pico/binary_info.h"
 #include "pico/critical_section.h"
 #include "pico/multicore.h"
@@ -48,6 +50,8 @@ int main() {
   // prvRuntimeInitializer();
   // xTaskCreate(task0, "Task_0", 256, NULL, 1, &task0_handle);
   xTaskCreate(eth_recv_task, "RecvTask", 256, NULL, 1, &eth_recv_task_handle);
+  xTaskCreate(notify_task, "NotifyTask", 256, NULL, 1, NULL);
+  xTaskCreate(output_task, "OutputTask", 256, NULL, 1, NULL);
   // multicore_launch_core1(start_core1);
   vTaskStartScheduler();
 

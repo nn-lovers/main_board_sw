@@ -4,6 +4,8 @@ add_executable(w5100_test
         main.cpp 
         eth.cpp
         notify.cpp
+        output.cpp
+        config.cpp
 )
 
 pico_set_program_name(w5100_test "w5100_test")
