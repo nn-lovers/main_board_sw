@@ -30,6 +30,7 @@ target_include_directories(w5100_test PRIVATE
 target_link_libraries(w5100_test 
         pico_stdlib
         hardware_timer
+        hardware_i2c
         IOLIBRARY_FILES
         ETHERNET_FILES
         W5100S_FILES

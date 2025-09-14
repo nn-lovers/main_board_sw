@@ -6,6 +6,7 @@
 // #include "eth.h"
 #include "hardware/clocks.h"
 #include "hardware/dma.h"
+#include "hardware/i2c.h"
 #include "hardware/spi.h"
 #include "hardware/timer.h"
 // #include "notify.h"
@@ -30,8 +31,32 @@ static wiz_NetInfo g_net_info = {
     .dhcp = NETINFO_STATIC};
 
 char limit_sw_pin[] = {6, 7, 8, 9, 10, 11, 12, 13};
+#define SDA_PIN 4
+#define SCL_PIN 5
 
 static void set_clock_khz(void);
+
+uint16_t read_absenc() {
+  uint8_t absenc_data[2] = {0x03, 0x04};
+  if (i2c_write_timeout_us(i2c0, 0x06, absenc_data, 1, true, 1000) != 1) {
+    printf("I2C write0 failed\n");
+    return -1;
+  }
+  if (i2c_read_timeout_us(i2c0, 0x06, absenc_data, 1, true, 1000) != 1) {
+    printf("I2C read0 failed\n");
+    return -1;
+  }
+  if (i2c_write_timeout_us(i2c0, 0x06, absenc_data + 1, 1, true, 1000) != 1) {
+    printf("I2C write1 failed\n");
+    return -1;
+  }
+  if (i2c_read_timeout_us(i2c0, 0x06, absenc_data + 1, 1, false, 1000) != 1) {
+    printf("I2C read1 failed\n");
+    return -1;
+  }
+
+  return ((absenc_data[0] << 8) | absenc_data[1]) >> 2;
+}
 
 int64_t alarm_callback(alarm_id_t id, void *user_data) {
   // Put your timeout handler code in here
@@ -52,10 +77,15 @@ int main() {
   gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
   gpio_put(PICO_DEFAULT_LED_PIN, 1);
 
+  // Initialize I2C, SPI, and Ethernet
   for (int i = 0; i < sizeof(limit_sw_pin); i++) {
     gpio_init(limit_sw_pin[i]);
     gpio_set_dir(limit_sw_pin[i], GPIO_IN);
   }
+  i2c_init(i2c0, 100 * 1000);
+  gpio_set_function(SDA_PIN, GPIO_FUNC_I2C);  // SDA
+  gpio_set_function(SCL_PIN, GPIO_FUNC_I2C);  // SCL
+  bi_decl(bi_2pins_with_func(SDA_PIN, SCL_PIN, GPIO_FUNC_I2C));
 
   sleep_ms(3000);
   wizchip_spi_initialize();
@@ -67,7 +97,7 @@ int main() {
 
   network_initialize(g_net_info);
 
-  /* Get network information */
+  // initialize the socket
   print_network_information(g_net_info);
   int retval = socket(0, Sn_MR_UDP, 5000, 0);
   if (retval != 0) {
@@ -78,9 +108,8 @@ int main() {
   ctlsocket(0, CS_SET_IOMODE, (void *)&mode);
 
   uint8_t ip[4] = {192, 168, 100, 1};
-  uint16_t port = 5001;
+  uint16_t port = 55151;
 
-  uint8_t cnt = 0;
   while (true) {
     // printf("Hello, world! %d\n", counter++);
     sleep_ms(20);
@@ -101,18 +130,19 @@ int main() {
         limit_sw_val |= (1 << i);
       }
     }
+    uint16_t abs_enc = read_absenc();
 
     UplinkPacket uplink_packet = {
-        .abs_enc = counter++,
+        .abs_enc = abs_enc,
         .limit_sw = limit_sw_val,
     };
 
-    retval =
-        sendto(0, (uint8_t *)&uplink_packet, sizeof(uplink_packet), ip, port);
+    uint8_t buffer[sizeof(UplinkPacket) + 1];
+    buffer[0] = 's';
+    memcpy(buffer + 1, &uplink_packet, sizeof(UplinkPacket));
+    retval = sendto(0, buffer, sizeof(buffer), ip, port);
     if (retval < 0) {
       printf(" Loopback error : %d\n", retval);
-
-      while (1);
     }
   }
 }
