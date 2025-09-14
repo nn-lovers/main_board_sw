@@ -25,6 +25,7 @@ if (EXISTS ${picoVscode})
 endif()
 # ====================================================================================
 set(PICO_BOARD wiznet_w5100s_evb_pico CACHE STRING "Board type")
+set(BOARD_NAME W5100S_EVB_PICO)
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
@@ -46,14 +47,6 @@ if(NOT DEFINED PORT_DIR)
     message(STATUS "PORT_DIR = ${PORT_DIR}")
 endif()
 
-if(NOT DEFINED FREERTOS_DIR)
-    set(FREERTOS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/freertos)
-    set(FREERTOS_KERNEL_PATH ${FREERTOS_DIR})
-    message(STATUS "FREERTOS_DIR = ${FREERTOS_DIR}")
-endif()
-set(FREERTOS_CONFIG_FILE_DIRECTORY ${PORT_DIR}/freertos)
-set(FREERTOS_PORT GCC_RP2040)
-
 if(NOT DEFINED WIZNET_DIR)
     set(WIZNET_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/ioLibrary_Driver)
     message(STATUS "WIZNET_DIR = ${WIZNET_DIR}")
@@ -66,6 +59,5 @@ endif()
 
 add_subdirectory(${PORT_DIR})
 add_subdirectory(lib)
-include(FreeRTOS_Kernel_import.cmake)
 
 add_subdirectory(src)

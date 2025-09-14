@@ -15,11 +15,6 @@ extern "C" {
 
 static uint8_t recvbuf[2048];
 
-TaskHandle_t eth_send_task_handle;
-TaskHandle_t eth_recv_task_handle;
-QueueHandle_t recv_queue;
-SemaphoreHandle_t eth_mutex;
-
 static void recv_intr_callback();
 
 void eth_setup(void) {
@@ -38,18 +33,11 @@ void eth_setup(void) {
     printf("socket() failed: %d\n", retval);
     return;
   }
-
-  eth_mutex = xSemaphoreCreateMutex();
 }
 
 void eth_send(char *data, size_t len, uint8_t *ip, uint16_t port) {
   if (len > 2048) {
     printf("Data length exceeds buffer size\n");
-    return;
-  }
-
-  if (xSemaphoreTake(eth_mutex, pdMS_TO_TICKS(10)) != pdTRUE) {
-    printf("Failed to take eth_mutex\n");
     return;
   }
 
@@ -60,24 +48,12 @@ void eth_send(char *data, size_t len, uint8_t *ip, uint16_t port) {
     // printf("Sent %d bytes to %d.%d.%d.%d:%d\n", sent_len, ip[0], ip[1],
     //        ip[2], ip[3], port);
   }
-
-  xSemaphoreGive(eth_mutex);
 }
 
 void eth_recv_task(void *pvParameters) {
   uint16_t reg_val;
   int32_t recv_len = 0;
   uint8_t queuebuf = 0;
-
-  sleep_ms(5000);
-
-  recv_queue = xQueueCreate(1, sizeof(DownlinkPacket));
-  if (recv_queue == NULL) {
-    printf("Failed to create recv_queue\n");
-    return;
-  }
-
-  wizchip_gpio_interrupt_initialize(0, recv_intr_callback);
 
   while (1) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
@@ -123,14 +99,6 @@ void eth_recv_task(void *pvParameters) {
     }
     vTaskDelay(100);
   }
-}
-
-static void recv_intr_callback(void) {
-  signed portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-  // gpio_put(PICO_DEFAULT_LED_PIN, !gpio_get(PICO_DEFAULT_LED_PIN));
-  vTaskNotifyGiveFromISR(eth_recv_task_handle, &xHigherPriorityTaskWoken);
-  uint8_t buf = 0;
-  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 #ifdef __cplusplus

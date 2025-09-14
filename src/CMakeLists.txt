@@ -2,9 +2,9 @@
 
 add_executable(w5100_test 
         main.cpp 
-        eth.cpp
-        notify.cpp
-        output.cpp
+        # eth.cpp
+        # notify.cpp
+        # output.cpp
         config.cpp
 )
 
@@ -12,8 +12,8 @@ pico_set_program_name(w5100_test "w5100_test")
 pico_set_program_version(w5100_test "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(w5100_test 0)
-pico_enable_stdio_usb(w5100_test 1)
+pico_enable_stdio_uart(w5100_test 1)
+pico_enable_stdio_usb(w5100_test 0)
 
 # Add the standard library to the build
 target_link_libraries(w5100_test
@@ -30,7 +30,6 @@ target_include_directories(w5100_test PRIVATE
 target_link_libraries(w5100_test 
         pico_stdlib
         hardware_timer
-        FreeRTOS-Kernel-Heap4
         IOLIBRARY_FILES
         ETHERNET_FILES
         W5100S_FILES
