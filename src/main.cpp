@@ -33,6 +33,7 @@ static wiz_NetInfo g_net_info = {
 char limit_sw_pin[] = {6, 7, 8, 9, 10, 11, 12, 13};
 #define SDA_PIN 4
 #define SCL_PIN 5
+#define EMERGENCY_STOP_PIN 14
 
 static void set_clock_khz(void);
 
@@ -76,6 +77,10 @@ int main() {
   gpio_init(PICO_DEFAULT_LED_PIN);
   gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
   gpio_put(PICO_DEFAULT_LED_PIN, 1);
+
+  gpio_init(EMERGENCY_STOP_PIN);
+  gpio_set_dir(EMERGENCY_STOP_PIN, GPIO_OUT);
+  gpio_put(EMERGENCY_STOP_PIN, 1);
 
   // Initialize I2C, SPI, and Ethernet
   for (int i = 0; i < sizeof(limit_sw_pin); i++) {
