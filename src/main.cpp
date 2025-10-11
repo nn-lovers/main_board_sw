@@ -76,7 +76,6 @@ int main() {
 
   gpio_init(PICO_DEFAULT_LED_PIN);
   gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-  gpio_put(PICO_DEFAULT_LED_PIN, 1);
 
   gpio_init(EMERGENCY_STOP_PIN);
   gpio_set_dir(EMERGENCY_STOP_PIN, GPIO_OUT);
@@ -111,6 +110,8 @@ int main() {
   }
   uint8_t mode = SOCK_IO_NONBLOCK;
   ctlsocket(0, CS_SET_IOMODE, (void *)&mode);
+
+  gpio_put(PICO_DEFAULT_LED_PIN, 1);
 
   uint8_t ip[4] = {192, 168, 100, 1};
   uint16_t port = 55151;
